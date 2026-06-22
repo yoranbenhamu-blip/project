@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cost Manager</title>
+    <link rel="stylesheet" href="style_project.css"></head>
+<body>
+
+<div class="container">
+    <h1>Cost Manager</h1>
+
+    <div class="section">
+        <h2>Add Cost</h2>
+        <input id="sum" type="number" placeholder="Amount">
+
+        <select id="currency" style="display: block; width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box;">
+            <option value="USD">USD ($)</option>
+            <option value="ILS">ILS (₪)</option>
+        </select>
+
+        <input id="category" type="text" placeholder="Category">
+        <input id="description" type="text" placeholder="Description">
+        <button onclick="add()">Add Cost</button>
+    </div>
+
+    <div class="section">
+        <h2>Monthly Report</h2>
+        <input id="year" type="number" placeholder="Year (e.g. 2026)">
+        <input id="month" type="number" placeholder="Month (1-12)">
+        <button onclick="report()">Get Report</button>
+        <pre id="output"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Charts Filter</h2>
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <input id="chartYear" type="number" placeholder="Select Year for Charts" style="margin-bottom: 0;">
+            <input id="chartMonth" type="number" placeholder="Select Month for Pie Chart" style="margin-bottom: 0;">
+            <button onclick="loadCharts()">Update Charts</button>
+        </div>
+
+        <div class="charts">
+            <div class="chart-container">
+                <h3>Category Distribution (Selected Month & Year)</h3>
+                <canvas id="pieChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Monthly Expenses (Selected Year)</h3>
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="db.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
