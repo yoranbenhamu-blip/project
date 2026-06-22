@@ -54,8 +54,12 @@ function report() {
     }
 
     const data = dbInstance.getReport(year, month);
-    document.getElementById("output").innerText = JSON.stringify(data, null, 2);
-}
+    document.getElementById("output").innerHTML = `
+  <h3>Monthly Report</h3>
+  <p><b>Year:</b> ${data.year}</p>
+  <p><b>Month:</b> ${data.month}</p>
+  <p><b>Total:</b> ${data.total.sum} USD</p>
+`;}
 
 /**
  * Extracts current selection states to load database sets into graphical charts.
