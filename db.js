@@ -1,22 +1,27 @@
-/**
- * db.js - Synchronous LocalStorage wrapper database module.
- * Designed to provide immediate object returns for application states.
- */
+/* db.js - Cost Manager Database Library */
 
-const db = (() => {
-    let currentStorageKey = "costsdb";
+(function (global) {
 
-    /**
-     * Initializes the storage namespace and creates an empty collection if missing.
-     * @param {string} name - The LocalStorage key name.
-     * @param {number} version - Database version schema controller.
-     * @returns {Object} Interface containing functional database operations.
-     */
+    /* =========================
+       Internal DB Structure
+    ========================== */
+
+    let DB_NAME = null;
+    let DB_VERSION = null;
+
+    /* =========================
+       Open Database
+    ========================== */
+
     function openCostsDB(name, version) {
-        currentStorageKey = name || "costsdb";
+        DB_NAME = name;
+        DB_VERSION = version;
 
-        if (!localStorage.getItem(currentStorageKey)) {
-            localStorage.setItem(currentStorageKey, JSON.stringify([]));
+        if (!localStorage.getItem(DB_NAME)) {
+            const initData = {
+                costs: []
+            };
+            localStorage.setItem(DB_NAME, JSON.stringify(initData));
         }
 
         return {
@@ -25,21 +30,19 @@ const db = (() => {
         };
     }
 
-    /**
-     * Commits a single cost item entry into the local collection array.
-     * @param {Object} cost - Minimal properties representing the transaction.
-     * @returns {Object} Sanitized data payload echoing the successfully stored structure.
-     */
+    /* =========================
+       Add Cost Item
+    ========================== */
+
     function addCost(cost) {
-        const rawData = localStorage.getItem(currentStorageKey);
-        const costs = rawData ? JSON.parse(rawData) : [];
+
+        const db = JSON.parse(localStorage.getItem(DB_NAME));
+
         const now = new Date();
 
-        // Construct internal deep schema entry including precise timestamps
-        const fullCost = {
-            id: Date.now() + Math.random(),
-            sum: Number(cost.sum),
-            currency: cost.currency || "USD",
+        const newCost = {
+            sum: cost.sum,
+            currency: cost.currency,
             category: cost.category,
             description: cost.description,
             date: {
@@ -49,57 +52,39 @@ const db = (() => {
             }
         };
 
-        costs.push(fullCost);
-        localStorage.setItem(currentStorageKey, JSON.stringify(costs));
+        db.costs.push(newCost);
+        localStorage.setItem(DB_NAME, JSON.stringify(db));
 
         return {
-            sum: fullCost.sum,
-            currency: fullCost.currency,
-            category: fullCost.category,
-            description: fullCost.description
+            sum: newCost.sum,
+            currency: newCost.currency,
+            category: newCost.category,
+            description: newCost.description
         };
     }
 
-    /**
-     * Filters, aggregates, and reports currency sums for a specified time frame.
-     * Includes a type fallback fallback to safely manage raw string queries.
-     * @param {number|string} year - Numerical target calendar year or evaluation check string.
-     * @param {number} month - Target execution month index.
-     * @returns {Object} Aggregated monthly dataset compliant with standard structures.
-     */
+    /* =========================
+       Get Report
+    ========================== */
+
     function getReport(year, month) {
-        const rawData = localStorage.getItem(currentStorageKey);
-        const costs = rawData ? JSON.parse(rawData) : [];
 
-        // Fallback routine: handles dynamic testing overrides passing direct string flags
-        if (typeof year === "string") {
-            const totalSum = costs.reduce((acc, item) => acc + item.sum, 0);
-            return {
-                year: new Date().getFullYear(),
-                month: new Date().getMonth() + 1,
-                costs: costs,
-                total: { currency: "USD", sum: totalSum }
-            };
-        }
+        const db = JSON.parse(localStorage.getItem(DB_NAME));
 
-        // Execute precise matrix filtering using date components
-        const filtered = costs.filter(item =>
-            item.date.year === Number(year) &&
-            item.date.month === Number(month)
+        const filtered = db.costs.filter(c =>
+            c.date.year === year && c.date.month === month
         );
 
-        const totalSum = filtered.reduce((acc, item) => acc + item.sum, 0);
+        let totalSum = 0;
+
+        filtered.forEach(c => {
+            totalSum += c.sum;
+        });
 
         return {
-            year: Number(year),
-            month: Number(month),
-            costs: filtered.map(item => ({
-                sum: item.sum,
-                currency: item.currency,
-                category: item.category,
-                description: item.description,
-                date: { day: item.date.day }
-            })),
+            year: year,
+            month: month,
+            costs: filtered,
             total: {
                 currency: "USD",
                 sum: totalSum
@@ -107,12 +92,16 @@ const db = (() => {
         };
     }
 
-    return {
+    /* =========================
+       Export to global object
+    ========================== */
+
+    global.db = {
+        openCostsDB
+    };
+    window.db = {
         openCostsDB,
         addCost,
         getReport
     };
-})();
-
-// Bind module context directly onto global browser environment window
-window.db = db;
+})(window);
