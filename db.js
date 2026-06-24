@@ -99,9 +99,4 @@
     global.db = {
         openCostsDB
     };
-    window.db = {
-        openCostsDB,
-        addCost,
-        getReport
-    };
 })(window);

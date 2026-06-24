@@ -71,13 +71,11 @@ function loadCharts() {
     document.getElementById("chartYear").value = targetYear;
     document.getElementById("chartMonth").value = targetMonth;
 
-    const rawData = localStorage.getItem("costsdb");
-    const allCosts = rawData ? JSON.parse(rawData) : [];
+    const allCosts = dbInstance.getAllCosts();
 
     createPieChart(allCosts, targetYear, targetMonth);
     createBarChart(allCosts, targetYear);
 }
-
 /**
  * Generates category-specific breakdown inside a Pie Chart canvas context.
  */
