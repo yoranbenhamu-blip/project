@@ -14,9 +14,11 @@
     ========================== */
 
     function openCostsDB(name, version) {
-        DB_NAME = name;
-        DB_VERSION = version;
-
+        return {
+            addCost,
+            getReport,
+            getAllCosts
+        };
         if (!localStorage.getItem(DB_NAME)) {
             const initData = {
                 costs: []
@@ -62,7 +64,10 @@
             description: newCost.description
         };
     }
-
+    function getAllCosts() {
+        const db = JSON.parse(localStorage.getItem(DB_NAME));
+        return db.costs;
+    }
     /* =========================
        Get Report
     ========================== */

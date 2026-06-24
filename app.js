@@ -18,7 +18,7 @@ function add() {
     const category = document.getElementById("category").value.trim();
     const description = document.getElementById("description").value.trim();
 
-    if (!sum || !category) {
+    if (isNaN(sum) || category === ""){
         alert("Please fill in Sum and Category!");
         return;
     }
