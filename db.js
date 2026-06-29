@@ -1,30 +1,46 @@
 /* db.js - Cost Manager Database Library */
 
+/*
+  This library wraps localStorage and provides
+  a simple cost management database API.
+*/
+
 (function (global) {
 
-    /* =========================
-       Internal DB Structure
-    ========================== */
-
+    // =========================
+    // Internal DB state
+    // =========================
     let DB_NAME = null;
     let DB_VERSION = null;
 
-    /* =========================
-       Open Database
-    ========================== */
+    // =========================
+    // Helper: initialize DB if missing
+    // =========================
+    function initDB() {
+        const data = localStorage.getItem(DB_NAME);
 
-    function openCostsDB(name, version) {
-        return {
-            addCost,
-            getReport,
-            getAllCosts
-        };
-        if (!localStorage.getItem(DB_NAME)) {
-            const initData = {
-                costs: []
-            };
-            localStorage.setItem(DB_NAME, JSON.stringify(initData));
+        if (!data) {
+            const initial = { costs: [] };
+            localStorage.setItem(DB_NAME, JSON.stringify(initial));
         }
+    }
+
+    function readDB() {
+        return JSON.parse(localStorage.getItem(DB_NAME));
+    }
+
+    function writeDB(db) {
+        localStorage.setItem(DB_NAME, JSON.stringify(db));
+    }
+
+    // =========================
+    // Open DB
+    // =========================
+    function openCostsDB(name, version) {
+        DB_NAME = name;
+        DB_VERSION = version;
+
+        initDB();
 
         return {
             addCost,
@@ -32,21 +48,18 @@
         };
     }
 
-    /* =========================
-       Add Cost Item
-    ========================== */
-
+    // =========================
+    // Add cost item
+    // =========================
     function addCost(cost) {
-
-        const db = JSON.parse(localStorage.getItem(DB_NAME));
-
+        const db = readDB();
         const now = new Date();
 
         const newCost = {
-            sum: cost.sum,
-            currency: cost.currency,
-            category: cost.category,
-            description: cost.description,
+            sum: Number(cost.sum),
+            currency: cost.currency || "USD",
+            category: cost.category || "",
+            description: cost.description || "",
             date: {
                 year: now.getFullYear(),
                 month: now.getMonth() + 1,
@@ -55,8 +68,9 @@
         };
 
         db.costs.push(newCost);
-        localStorage.setItem(DB_NAME, JSON.stringify(db));
+        writeDB(db);
 
+        // return only required fields (as required by spec)
         return {
             sum: newCost.sum,
             currency: newCost.currency,
@@ -64,44 +78,49 @@
             description: newCost.description
         };
     }
-    function getAllCosts() {
-        const db = JSON.parse(localStorage.getItem(DB_NAME));
-        return db.costs;
-    }
-    /* =========================
-       Get Report
-    ========================== */
 
+    // =========================
+    // Get report by year + month
+    // =========================
     function getReport(year, month) {
-
-        const db = JSON.parse(localStorage.getItem(DB_NAME));
+        const db = readDB();
 
         const filtered = db.costs.filter(c =>
-            c.date.year === year && c.date.month === month
+            c.date.year === Number(year) &&
+            c.date.month === Number(month)
         );
 
-        let totalSum = 0;
+        let total = 0;
 
         filtered.forEach(c => {
-            totalSum += c.sum;
+            total += c.sum;
         });
 
         return {
-            year: year,
-            month: month,
+            year: Number(year),
+            month: Number(month),
             costs: filtered,
             total: {
                 currency: "USD",
-                sum: totalSum
+                sum: total
             }
         };
     }
 
-    /* =========================
-       Export to global object
-    ========================== */
+    // =========================
+    // NEW: required by app.js (fixes crash)
+    // =========================
+    function getAllCosts() {
+        const db = readDB();
+        return db.costs || [];
+    }
 
+    // =========================
+    // Export API
+    // =========================
     global.db = {
-        openCostsDB
+        openCostsDB,
+        getAllCosts
     };
+
 })(window);
