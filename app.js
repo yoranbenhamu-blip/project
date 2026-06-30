@@ -1,24 +1,35 @@
 /**
- * app.js - Controller handling UI, reports, and charts
+ * app.js - Controller for Cost Manager UI, charts, and reports
  */
 
+// Initialize database connection
 const dbInstance = db.openCostsDB("costsdb", 1);
 
+// Chart instances
 let pieChart;
 let barChart;
 
-/* ================= ADD COST ================= */
+/**
+ * Add a new cost item
+ */
 function add() {
     const sum = Number(document.getElementById("sum").value);
     const currency = document.getElementById("currency").value;
     const category = document.getElementById("category").value.trim();
     const description = document.getElementById("description").value.trim();
 
-    if (isNaN(sum) || sum <= 0 || !currency || !category) {
-        alert("Invalid input!");
+    // Validation
+    if (isNaN(sum) || sum <= 0) {
+        alert("Sum must be a positive number");
         return;
     }
 
+    if (!category || !description) {
+        alert("Category and Description are required");
+        return;
+    }
+
+    // Save to DB
     dbInstance.addCost({
         sum,
         currency,
@@ -26,58 +37,97 @@ function add() {
         description
     });
 
+    // Clear inputs
     document.getElementById("sum").value = "";
     document.getElementById("category").value = "";
     document.getElementById("description").value = "";
-    document.getElementById("currency").value = "USD";
 
     loadCharts();
 }
 
-/* ================= REPORT ================= */
+/**
+ * Generate monthly report
+ */
 function report() {
     const year = Number(document.getElementById("year").value);
     const month = Number(document.getElementById("month").value);
 
-    if (!year || !month) {
-        alert("Missing year/month");
+    // Validation
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+        alert("Invalid year");
+        return;
+    }
+
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+        alert("Month must be between 1 and 12");
         return;
     }
 
     const data = dbInstance.getReport(year, month);
 
-    document.getElementById("output").innerHTML = `
+    let html = `
         <h3>Monthly Report</h3>
-        <p>Year: ${data.year}</p>
-        <p>Month: ${data.month}</p>
-        <p>Total: ${data.total.sum} ${data.total.currency}</p>
+        <p><b>Year:</b> ${data.year}</p>
+        <p><b>Month:</b> ${data.month}</p>
+        <p><b>Total:</b> ${data.total.sum} USD</p>
+        <hr/>
+        <h4>Costs:</h4>
     `;
-}
 
-/* ================= LOAD CHARTS ================= */
-function loadCharts() {
-    const year = Number(document.getElementById("chartYear").value) || new Date().getFullYear();
-    const month = Number(document.getElementById("chartMonth").value) || (new Date().getMonth() + 1);
-
-    const allCosts = dbInstance.getAllCosts?.() || [];
-
-    createPieChart(allCosts, year, month);
-    createBarChart(allCosts, year);
-}
-
-/* ================= PIE CHART ================= */
-function createPieChart(costs, year, month) {
-    const categories = {};
-
-    const filtered = costs.filter(c =>
-        c.date && c.date.year === year && c.date.month === month
-    );
-
-    filtered.forEach(c => {
-        categories[c.category] = (categories[c.category] || 0) + c.sum;
+    data.costs.forEach(c => {
+        html += `
+            <p>
+                ${c.category} - ${c.description} :
+                ${c.sum} ${c.currency}
+                (Day ${c.date.day})
+            </p>
+        `;
     });
 
-    if (pieChart) pieChart.destroy();
+    document.getElementById("output").innerHTML = html;
+}
+
+/**
+ * Load charts data
+ */
+function loadCharts() {
+    const targetYear =
+        Number(document.getElementById("chartYear").value) ||
+        new Date().getFullYear();
+
+    const targetMonth =
+        Number(document.getElementById("chartMonth").value) ||
+        (new Date().getMonth() + 1);
+
+    document.getElementById("chartYear").value = targetYear;
+    document.getElementById("chartMonth").value = targetMonth;
+
+    const allCosts = dbInstance.getAllCosts();
+
+    createPieChart(allCosts, targetYear, targetMonth);
+    createBarChart(allCosts, targetYear);
+}
+
+/**
+ * Pie chart - category breakdown
+ */
+function createPieChart(costs, year, month) {
+    const filtered = costs.filter(
+        c => c.date.year === year && c.date.month === month
+    );
+
+    const categories = {};
+
+    filtered.forEach(c => {
+        if (!categories[c.category]) {
+            categories[c.category] = 0;
+        }
+        categories[c.category] += c.sum;
+    });
+
+    if (pieChart) {
+        pieChart.destroy();
+    }
 
     pieChart = new Chart(document.getElementById("pieChart"), {
         type: "pie",
@@ -90,36 +140,40 @@ function createPieChart(costs, year, month) {
     });
 }
 
-/* ================= BAR CHART ================= */
+/**
+ * Bar chart - yearly monthly breakdown
+ */
 function createBarChart(costs, year) {
-    const months = Array(12).fill(0);
+    const monthly = Array(12).fill(0);
 
-    const filtered = costs.filter(c =>
-        c.date && c.date.year === year
-    );
+    costs
+        .filter(c => c.date.year === year)
+        .forEach(c => {
+            monthly[c.date.month - 1] += c.sum;
+        });
 
-    filtered.forEach(c => {
-        const m = c.date.month;
-        if (m >= 1 && m <= 12) {
-            months[m - 1] += c.sum;
-        }
-    });
-
-    if (barChart) barChart.destroy();
+    if (barChart) {
+        barChart.destroy();
+    }
 
     barChart = new Chart(document.getElementById("barChart"), {
         type: "bar",
         data: {
-            labels: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+            labels: [
+                "Jan","Feb","Mar","Apr","May","Jun",
+                "Jul","Aug","Sep","Oct","Nov","Dec"
+            ],
             datasets: [{
-                label: `Expenses ${year}`,
-                data: months
+                label: "Monthly Expenses",
+                data: monthly
             }]
         }
     });
 }
 
-/* ================= INIT ================= */
+/**
+ * Initialize page
+ */
 window.onload = () => {
     loadCharts();
 };
